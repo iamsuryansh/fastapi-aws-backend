@@ -8,10 +8,9 @@ terraform {
   }
 
   backend "s3" {
-    # Configure your S3 backend here
-    # bucket = "your-terraform-state-bucket"
-    # key    = "fastapi-backend/terraform.tfstate"
-    # region = "us-east-1"
+    bucket = "fastapi-terraform-state-501235162920"
+    key    = "fastapi-backend/terraform.tfstate"
+    region = "ap-south-1"
   }
 }
 
@@ -23,7 +22,7 @@ provider "aws" {
 variable "aws_region" {
   description = "AWS region"
   type        = string
-  default     = "us-east-1"
+  default     = "ap-south-1"
 }
 
 variable "environment" {

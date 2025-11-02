@@ -20,10 +20,11 @@ systemctl start amazon-ssm-agent
 systemctl enable amazon-ssm-agent
 
 # Configure Docker to use ECR
-aws configure set default.region us-east-1
+aws configure set default.region ap-south-1
 
 # Login to ECR and pull image
-aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${split("/", var.image_uri)[0]}
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com
 
 # Pull and run the Docker container
 docker pull ${image_uri}
