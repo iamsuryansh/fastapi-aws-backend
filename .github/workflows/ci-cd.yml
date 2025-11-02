@@ -1,132 +1,86 @@
-name: CI/CD Pipeline
+name: FastAPI CI/CD Pipeline
 
 on:
   push:
-    branches: [ master, main, develop ]
+    branches: [ master, main ]
   pull_request:
     branches: [ master, main ]
-
-env:
-  AWS_REGION: ap-south-1
-  ECR_REPOSITORY: fastapi-backend
 
 jobs:
   test:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up Python 3.9
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: 3.9
-
-    - name: Cache pip dependencies
-      uses: actions/cache@v3
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-
+        python-version: '3.9'
+    
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-
+    
     - name: Run tests
       run: |
-        pytest test_main.py -v
+        python -m pytest test_main.py -v
 
-    - name: Run linting
-      run: |
-        pip install flake8
-        flake8 main.py --count --select=E9,F63,F7,F82 --show-source --statistics
-
-  build-and-push:
+  build:
     needs: test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
-    
-    outputs:
-      image: ${{ steps.image.outputs.image }}
     
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
+    - uses: actions/checkout@v4
+    
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ env.AWS_REGION }}
-
+        aws-region: ap-south-1
+    
     - name: Login to Amazon ECR
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
-
-    - name: Build, tag, and push image to Amazon ECR
-      id: image
+    
+    - name: Build and push Docker image
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: fastapi-backend
         IMAGE_TAG: ${{ github.sha }}
       run: |
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
-        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-  deploy:
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ env.AWS_REGION }}
-
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v3
-      with:
-        terraform_version: 1.0.0
-
-    - name: Terraform Init
-      run: terraform init
-      working-directory: ./infrastructure
-
-    - name: Terraform Plan
-      run: terraform plan -var="image_uri=${{ needs.build-and-push.outputs.image }}"
-      working-directory: ./infrastructure
-
-    - name: Terraform Apply
-      run: terraform apply -auto-approve -var="image_uri=${{ needs.build-and-push.outputs.image }}"
-      working-directory: ./infrastructure
-
-    - name: Deploy to EC2
-      run: |
-        # Get the EC2 instance IPs from Terraform output
-        INSTANCE_IPS=$(terraform output -raw instance_ips)
-        
-        # Deploy using AWS Systems Manager
-        aws ssm send-command \
-          --document-name "AWS-RunShellScript" \
-          --parameters 'commands=[
-            "sudo docker stop fastapi-container || true",
-            "sudo docker rm fastapi-container || true",
-            "sudo docker pull ${{ needs.build-and-push.outputs.image }}",
-            "sudo docker run -d --name fastapi-container -p 8000:8000 ${{ needs.build-and-push.outputs.image }}"
-          ]' \
-          --targets "Key=tag:Environment,Values=production" \
-          --region ${{ env.AWS_REGION }}
-      working-directory: ./infrastructure
+  # deploy: # DISABLED - AWS deployment disabled by disable-cicd.sh script
+  # needs: build
+  # runs-on: ubuntu-latest
+  # if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+  # 
+  # steps:
+  # - uses: actions/checkout@v4
+  # 
+  # - name: Configure AWS credentials
+  #   uses: aws-actions/configure-aws-credentials@v4
+  #   with:
+  #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  #     aws-region: ap-south-1
+  # 
+  # - name: Setup Terraform
+  #   uses: hashicorp/setup-terraform@v3
+  #   with:
+  #     terraform_version: 1.12.2
+  # 
+  # - name: Deploy to EC2
+  #   env:
+  #     AWS_ACCOUNT_ID: 501235162920
+  #   run: |
+  #     cd infrastructure
+  #     terraform init
+  #     terraform apply -auto-approve \
+  #       -var="image_uri=$AWS_ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/fastapi-backend:${{ github.sha }}"
