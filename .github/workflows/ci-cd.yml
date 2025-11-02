@@ -56,31 +56,31 @@ jobs:
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
-  # deploy: # DISABLED - AWS deployment disabled by disable-cicd.sh script
-  # needs: build
-  # runs-on: ubuntu-latest
-  # if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
-  # 
-  # steps:
-  # - uses: actions/checkout@v4
-  # 
-  # - name: Configure AWS credentials
-  #   uses: aws-actions/configure-aws-credentials@v4
-  #   with:
-  #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-  #     aws-region: ap-south-1
-  # 
-  # - name: Setup Terraform
-  #   uses: hashicorp/setup-terraform@v3
-  #   with:
-  #     terraform_version: 1.12.2
-  # 
-  # - name: Deploy to EC2
-  #   env:
-  #     AWS_ACCOUNT_ID: 501235162920
-  #   run: |
-  #     cd infrastructure
-  #     terraform init
-  #     terraform apply -auto-approve \
-  #       -var="image_uri=$AWS_ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/fastapi-backend:${{ github.sha }}"
+    #   # deploy: # DISABLED - AWS deployment disabled by disable-cicd.sh script
+    #   # needs: build
+    #   # runs-on: ubuntu-latest
+    #   # if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+    #   # 
+    #   # steps:
+    #   # - uses: actions/checkout@v4
+    #   # 
+    #   # - name: Configure AWS credentials
+    #   #   uses: aws-actions/configure-aws-credentials@v4
+    #   #   with:
+    #   #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+    #   #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    #   #     aws-region: ap-south-1
+    #   # 
+    #   # - name: Setup Terraform
+    #   #   uses: hashicorp/setup-terraform@v3
+    #   #   with:
+    #   #     terraform_version: 1.12.2
+    #   # 
+    #   # - name: Deploy to EC2
+    #   #   env:
+    #   #     AWS_ACCOUNT_ID: 501235162920
+    #   #   run: |
+    #   #     cd infrastructure
+    #   #     terraform init
+    #   #     terraform apply -auto-approve \
+    #   #       -var="image_uri=$AWS_ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/fastapi-backend:${{ github.sha }}"
